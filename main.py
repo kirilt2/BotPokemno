@@ -73,7 +73,7 @@ def generate_image(message):
     chat_id = message.chat.id
     text = message.text
 
-    # Simulate typing
+
     bot.send_chat_action(chat_id, 'typing')
 
 
@@ -83,7 +83,7 @@ def generate_image(message):
     photo = open(os.path.join('images', "123.jpg"), "rb")
     bot.send_photo(chat_id, photo)
 
-    # Delete the image after sending
+
     os.remove(os.path.join('images', "123.jpg"))
 
 
