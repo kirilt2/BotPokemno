@@ -1,11 +1,1 @@
--- Function to setup player leaderboards
-game.Players.PlayerAdded:Connect(function(player)
-	local leaderstats = Instance.new("Folder") -- Create a folder for leaderstats
-	leaderstats.Name = "leaderstats" -- Name it 'leaderstats'
-	leaderstats.Parent = player -- Parent the folder to the player
-
-	local coins = Instance.new("IntValue") -- Create an IntValue for coins
-	coins.Name = "Coins" -- Name it 'Coins'
-	coins.Value = 0 -- Start with 0 coins
-	coins.Parent = leaderstats -- Parent it to the leaderstats folder
-end)
+na
