@@ -1,22 +1,29 @@
---[[ 
-    Advanced Admin Command System
-    Created by: [Your Name]
-    This script allows for admin-only commands in a Roblox game.
-    Commands include: teleportation, flying, kicking players, freezing, and more.
-    Demonstrates the use of CFrame, physics, metatables, and validation.
---]]
 
--- Utility metatable for admin commands
+
+-- Utility Functions
+local function logCommand(player, command)
+	print(player.Name .. " executed command: " .. command)
+end
+
+local function getPlayerByName(name)
+	return game.Players:FindFirstChild(name)
+end
+
+local function isPlayerAdmin(player)
+	return player and player.Name and game.Players:FindFirstChild(player.Name) and admins[player.Name]
+end
+
+-- Command Metatable
 local CommandMetatable = {}
-
--- Teleport the admin to a target player
 function CommandMetatable:TeleportTo(targetPlayer)
-	if targetPlayer and targetPlayer.Character then
+	if targetPlayer and targetPlayer.Character and targetPlayer.Character.PrimaryPart then
 		self.Character:SetPrimaryPartCFrame(targetPlayer.Character.PrimaryPart.CFrame)
+		logCommand(self, "teleport " .. targetPlayer.Name)
+	else
+		warn("Target player does not have a character.")
 	end
 end
 
--- Admin flight ability using physics
 function CommandMetatable:Fly()
 	local humanoid = self.Character:FindFirstChild("Humanoid")
 	if humanoid then
@@ -25,150 +32,226 @@ function CommandMetatable:Fly()
 		bodyVelocity.Velocity = Vector3.new(0, 50, 0)
 		bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
 		bodyVelocity.Parent = self.Character.PrimaryPart
-	end
-end
 
--- Admin ground (stop flying)
-function CommandMetatable:Land()
-	local humanoid = self.Character:FindFirstChild("Humanoid")
-	if humanoid then
+		wait(10) -- Fly for 10 seconds
 		humanoid.PlatformStand = false
-		if self.Character.PrimaryPart:FindFirstChild("BodyVelocity") then
-			self.Character.PrimaryPart.BodyVelocity:Destroy()
-		end
+		bodyVelocity:Destroy()
+		logCommand(self, "fly")
+	else
+		warn("Humanoid not found for flying.")
 	end
 end
 
--- Kick another player from the game
-function CommandMetatable:KickPlayer(targetPlayer, reason)
-	if targetPlayer then
-		targetPlayer:Kick(reason or "No reason provided")
+function CommandMetatable:Kick(reason)
+	local player = game.Players:FindFirstChild(self.Name)
+	if player then
+		player:Kick(reason or "No reason provided")
+		logCommand(self, "kick " .. player.Name)
+	else
+		warn("Player not found for kicking.")
 	end
 end
 
--- Freeze the target player (disable movement)
-function CommandMetatable:Freeze(targetPlayer)
+function CommandMetatable:Bring(targetName)
+	local targetPlayer = getPlayerByName(targetName)
+	if targetPlayer and targetPlayer.Character and targetPlayer.Character.PrimaryPart then
+		targetPlayer.Character:SetPrimaryPartCFrame(self.Character.PrimaryPart.CFrame)
+		logCommand(self, "bring " .. targetName)
+	else
+		warn("Target player not found for bringing.")
+	end
+end
+
+function CommandMetatable:Freeze(targetName)
+	local targetPlayer = getPlayerByName(targetName)
 	if targetPlayer and targetPlayer.Character then
 		local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
 		if humanoid then
 			humanoid.PlatformStand = true
+			logCommand(self, "freeze " .. targetName)
+		else
+			warn("Humanoid not found for freezing.")
 		end
+	else
+		warn("Target player not found for freezing.")
 	end
 end
 
--- Unfreeze the target player
-function CommandMetatable:Unfreeze(targetPlayer)
+function CommandMetatable:Unfreeze(targetName)
+	local targetPlayer = getPlayerByName(targetName)
 	if targetPlayer and targetPlayer.Character then
 		local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
 		if humanoid then
 			humanoid.PlatformStand = false
+			logCommand(self, "unfreeze " .. targetName)
+		else
+			warn("Humanoid not found for unfreezing.")
 		end
+	else
+		warn("Target player not found for unfreezing.")
 	end
 end
 
--- Change the CFrame position of the admin (move them in space)
-function CommandMetatable:MoveBy(x, y, z)
-	if self.Character then
-		local newCFrame = self.Character.PrimaryPart.CFrame * CFrame.new(x, y, z)
-		self.Character:SetPrimaryPartCFrame(newCFrame)
+function CommandMetatable:ChangeSpeed(speed)
+	local humanoid = self.Character:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = speed or 16
+		logCommand(self, "changespeed " .. tostring(speed))
+	else
+		warn("Humanoid not found for changing speed.")
 	end
 end
 
--- Bring a player to the admin's position
-function CommandMetatable:BringPlayer(targetPlayer)
-	if targetPlayer and targetPlayer.Character then
-		targetPlayer.Character:SetPrimaryPartCFrame(self.Character.PrimaryPart.CFrame)
+function CommandMetatable:ChangeJumpPower(jumpPower)
+	local humanoid = self.Character:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.JumpPower = jumpPower or 50
+		logCommand(self, "changejumppower " .. tostring(jumpPower))
+	else
+		warn("Humanoid not found for changing jump power.")
 	end
 end
 
--- Admin list and permissions
+-- Admin Players List
 local admins = {
 	["hellomenamearmy"] = true,
 	["Player2"] = true,
+	["Admin3"] = true,
+	["Admin4"] = true,
 }
 
--- Available commands
+-- Commands Dictionary
 local commands = {
 	teleport = function(admin, target)
-		local targetPlayer = game.Players:FindFirstChild(target)
+		local targetPlayer = getPlayerByName(target)
 		if targetPlayer then
-			setmetatable(admin, {__index = CommandMetatable})
 			admin:TeleportTo(targetPlayer)
+		else
+			warn("Target player not found for teleport.")
 		end
 	end,
 
 	fly = function(admin)
-		setmetatable(admin, {__index = CommandMetatable})
 		admin:Fly()
 	end,
 
-	land = function(admin)
-		setmetatable(admin, {__index = CommandMetatable})
-		admin:Land()
-	end,
-
 	kick = function(admin, target, reason)
-		local targetPlayer = game.Players:FindFirstChild(target)
+		local targetPlayer = getPlayerByName(target)
 		if targetPlayer then
-			setmetatable(admin, {__index = CommandMetatable})
-			admin:KickPlayer(targetPlayer, reason)
+			admin:Kick(reason)
+		else
+			warn("Target player not found for kick.")
 		end
-	end,
-
-	cframe = function(admin, x, y, z)
-		setmetatable(admin, {__index = CommandMetatable})
-		admin:MoveBy(tonumber(x), tonumber(y), tonumber(z))
 	end,
 
 	bring = function(admin, target)
-		local targetPlayer = game.Players:FindFirstChild(target)
-		if targetPlayer then
-			setmetatable(admin, {__index = CommandMetatable})
-			admin:BringPlayer(targetPlayer)
-		end
+		admin:Bring(target)
 	end,
 
 	freeze = function(admin, target)
-		local targetPlayer = game.Players:FindFirstChild(target)
-		if targetPlayer then
-			setmetatable(admin, {__index = CommandMetatable})
-			admin:Freeze(targetPlayer)
-		end
+		admin:Freeze(target)
 	end,
 
 	unfreeze = function(admin, target)
-		local targetPlayer = game.Players:FindFirstChild(target)
-		if targetPlayer then
-			setmetatable(admin, {__index = CommandMetatable})
-			admin:Unfreeze(targetPlayer)
+		admin:Unfreeze(target)
+	end,
+
+	changespeed = function(admin, speed)
+		admin:ChangeSpeed(tonumber(speed))
+	end,
+
+	changejumppower = function(admin, jumpPower)
+		admin:ChangeJumpPower(tonumber(jumpPower))
+	end,
+
+	cframe = function(admin, x, y, z)
+		if admin.Character and admin.Character.PrimaryPart then
+			local newCFrame = admin.Character.PrimaryPart.CFrame * CFrame.new(tonumber(x), tonumber(y), tonumber(z))
+			admin.Character:SetPrimaryPartCFrame(newCFrame)
+			logCommand(admin, "cframe " .. x .. ", " .. y .. ", " .. z)
+		else
+			warn("Admin character not found for CFrame.")
 		end
 	end,
 
-	help = function(admin)
-		admin:SendSystemMessage("Available commands: teleport [player], fly, land, kick [player] [reason], cframe [x] [y] [z], bring [player], freeze [player], unfreeze [player].")
+	-- New Command Examples
+	announce = function(admin, ...)
+		local message = table.concat({...}, " ")
+		for _, player in pairs(game.Players:GetPlayers()) do
+			if player:FindFirstChild("PlayerGui") then
+				local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+				local textLabel = Instance.new("TextLabel", screenGui)
+				textLabel.Size = UDim2.new(1, 0, 0, 50)
+				textLabel.Position = UDim2.new(0, 0, 0, 0)
+				textLabel.Text = message
+				textLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+				wait(5)
+				screenGui:Destroy()
+			end
+		end
+		logCommand(admin, "announce " .. message)
 	end,
+
+	revive = function(admin, target)
+		local targetPlayer = getPlayerByName(target)
+		if targetPlayer and targetPlayer.Character then
+			local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+			if humanoid then
+				humanoid.Health = humanoid.MaxHealth
+				logCommand(admin, "revive " .. target)
+			else
+				warn("Humanoid not found for reviving.")
+			end
+		else
+			warn("Target player not found for reviving.")
+		end
+	end,
+
+	teleportAll = function(admin)
+		for _, player in pairs(game.Players:GetPlayers()) do
+			if player.Character and player.Character.PrimaryPart then
+				player.Character:SetPrimaryPartCFrame(admin.Character.PrimaryPart.CFrame)
+			end
+		end
+		logCommand(admin, "teleportall")
+	end,
+
+	-- Add more commands here as needed
 }
 
--- Event listener for chat commands
-game.Players.PlayerAdded:Connect(function(player)
-	if admins[player.Name] then
-		player.Chatted:Connect(function(msg)
-			local args = msg:split(" ")
-			local commandName = args[1]:lower()
+-- Function to handle admin commands
+local function onAdminAdded(player)
+	local adminCommands = setmetatable({}, {__index = CommandMetatable})
 
-			-- Validate the command
-			if commands[commandName] then
-				-- Remove command from args to process parameters
-				table.remove(args, 1)
+	player.CharacterAdded:Connect(function(character)
+		adminCommands.Character = character
+	end)
 
-				-- Execute the command
-				commands[commandName](player, unpack(args))
+	player.Chatted:Connect(function(message)
+		local splitMessage = message:split(" ")
+		local command = splitMessage[1]:lower()
+
+		if command:sub(1, 1) == "/" then
+			command = command:sub(2)  -- Remove the prefix
+
+			if commands[command] then
+				table.remove(splitMessage, 1) -- Remove command from arguments
+				commands[command](adminCommands, unpack(splitMessage)) -- Execute the command
+			else
+				warn("Command not found: " .. command)
 			end
-		end)
+		end
+	end)
+end
+
+-- Hooking up the PlayerAdded event
+game.Players.PlayerAdded:Connect(function(player)
+	if isPlayerAdmin(player) then
+		onAdminAdded(player)
 	end
 end)
 
--- Utility function to split a string
+-- String Split Function
 function string:split(separator)
 	local result = {}
 	for part in self:gmatch("[^"..separator.."]+") do
@@ -176,28 +259,3 @@ function string:split(separator)
 	end
 	return result
 end
-
--- Helper function to clean up player (removes punishments)
-local function cleanUpPlayer(player)
-	local humanoid = player.Character:FindFirstChild("Humanoid")
-	if humanoid then
-		humanoid.PlatformStand = false
-		if player.Character.PrimaryPart:FindFirstChild("BodyVelocity") then
-			player.Character.PrimaryPart.BodyVelocity:Destroy()
-		end
-	end
-end
-
--- Teleport command with validation
-local function teleportCommand(admin, targetPlayer)
-	if admin and targetPlayer and admin.Character and targetPlayer.Character then
-		admin.Character:SetPrimaryPartCFrame(targetPlayer.Character.PrimaryPart.CFrame)
-	end
-end
-
--- Hook PlayerAdded event for assigning admins
-game.Players.PlayerAdded:Connect(function(player)
-	if admins[player.Name] then
-		setmetatable(player, {__index = CommandMetatable})
-	end
-end)
