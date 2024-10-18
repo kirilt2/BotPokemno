@@ -1,0 +1,203 @@
+--[[ 
+    Advanced Admin Command System
+    Created by: [Your Name]
+    This script allows for admin-only commands in a Roblox game.
+    Commands include: teleportation, flying, kicking players, freezing, and more.
+    Demonstrates the use of CFrame, physics, metatables, and validation.
+--]]
+
+-- Utility metatable for admin commands
+local CommandMetatable = {}
+
+-- Teleport the admin to a target player
+function CommandMetatable:TeleportTo(targetPlayer)
+	if targetPlayer and targetPlayer.Character then
+		self.Character:SetPrimaryPartCFrame(targetPlayer.Character.PrimaryPart.CFrame)
+	end
+end
+
+-- Admin flight ability using physics
+function CommandMetatable:Fly()
+	local humanoid = self.Character:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.PlatformStand = true
+		local bodyVelocity = Instance.new("BodyVelocity")
+		bodyVelocity.Velocity = Vector3.new(0, 50, 0)
+		bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+		bodyVelocity.Parent = self.Character.PrimaryPart
+	end
+end
+
+-- Admin ground (stop flying)
+function CommandMetatable:Land()
+	local humanoid = self.Character:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.PlatformStand = false
+		if self.Character.PrimaryPart:FindFirstChild("BodyVelocity") then
+			self.Character.PrimaryPart.BodyVelocity:Destroy()
+		end
+	end
+end
+
+-- Kick another player from the game
+function CommandMetatable:KickPlayer(targetPlayer, reason)
+	if targetPlayer then
+		targetPlayer:Kick(reason or "No reason provided")
+	end
+end
+
+-- Freeze the target player (disable movement)
+function CommandMetatable:Freeze(targetPlayer)
+	if targetPlayer and targetPlayer.Character then
+		local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+		if humanoid then
+			humanoid.PlatformStand = true
+		end
+	end
+end
+
+-- Unfreeze the target player
+function CommandMetatable:Unfreeze(targetPlayer)
+	if targetPlayer and targetPlayer.Character then
+		local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+		if humanoid then
+			humanoid.PlatformStand = false
+		end
+	end
+end
+
+-- Change the CFrame position of the admin (move them in space)
+function CommandMetatable:MoveBy(x, y, z)
+	if self.Character then
+		local newCFrame = self.Character.PrimaryPart.CFrame * CFrame.new(x, y, z)
+		self.Character:SetPrimaryPartCFrame(newCFrame)
+	end
+end
+
+-- Bring a player to the admin's position
+function CommandMetatable:BringPlayer(targetPlayer)
+	if targetPlayer and targetPlayer.Character then
+		targetPlayer.Character:SetPrimaryPartCFrame(self.Character.PrimaryPart.CFrame)
+	end
+end
+
+-- Admin list and permissions
+local admins = {
+	["hellomenamearmy"] = true,
+	["Player2"] = true,
+}
+
+-- Available commands
+local commands = {
+	teleport = function(admin, target)
+		local targetPlayer = game.Players:FindFirstChild(target)
+		if targetPlayer then
+			setmetatable(admin, {__index = CommandMetatable})
+			admin:TeleportTo(targetPlayer)
+		end
+	end,
+
+	fly = function(admin)
+		setmetatable(admin, {__index = CommandMetatable})
+		admin:Fly()
+	end,
+
+	land = function(admin)
+		setmetatable(admin, {__index = CommandMetatable})
+		admin:Land()
+	end,
+
+	kick = function(admin, target, reason)
+		local targetPlayer = game.Players:FindFirstChild(target)
+		if targetPlayer then
+			setmetatable(admin, {__index = CommandMetatable})
+			admin:KickPlayer(targetPlayer, reason)
+		end
+	end,
+
+	cframe = function(admin, x, y, z)
+		setmetatable(admin, {__index = CommandMetatable})
+		admin:MoveBy(tonumber(x), tonumber(y), tonumber(z))
+	end,
+
+	bring = function(admin, target)
+		local targetPlayer = game.Players:FindFirstChild(target)
+		if targetPlayer then
+			setmetatable(admin, {__index = CommandMetatable})
+			admin:BringPlayer(targetPlayer)
+		end
+	end,
+
+	freeze = function(admin, target)
+		local targetPlayer = game.Players:FindFirstChild(target)
+		if targetPlayer then
+			setmetatable(admin, {__index = CommandMetatable})
+			admin:Freeze(targetPlayer)
+		end
+	end,
+
+	unfreeze = function(admin, target)
+		local targetPlayer = game.Players:FindFirstChild(target)
+		if targetPlayer then
+			setmetatable(admin, {__index = CommandMetatable})
+			admin:Unfreeze(targetPlayer)
+		end
+	end,
+
+	help = function(admin)
+		admin:SendSystemMessage("Available commands: teleport [player], fly, land, kick [player] [reason], cframe [x] [y] [z], bring [player], freeze [player], unfreeze [player].")
+	end,
+}
+
+-- Event listener for chat commands
+game.Players.PlayerAdded:Connect(function(player)
+	if admins[player.Name] then
+		player.Chatted:Connect(function(msg)
+			local args = msg:split(" ")
+			local commandName = args[1]:lower()
+
+			-- Validate the command
+			if commands[commandName] then
+				-- Remove command from args to process parameters
+				table.remove(args, 1)
+
+				-- Execute the command
+				commands[commandName](player, unpack(args))
+			end
+		end)
+	end
+end)
+
+-- Utility function to split a string
+function string:split(separator)
+	local result = {}
+	for part in self:gmatch("[^"..separator.."]+") do
+		table.insert(result, part)
+	end
+	return result
+end
+
+-- Helper function to clean up player (removes punishments)
+local function cleanUpPlayer(player)
+	local humanoid = player.Character:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.PlatformStand = false
+		if player.Character.PrimaryPart:FindFirstChild("BodyVelocity") then
+			player.Character.PrimaryPart.BodyVelocity:Destroy()
+		end
+	end
+end
+
+-- Teleport command with validation
+local function teleportCommand(admin, targetPlayer)
+	if admin and targetPlayer and admin.Character and targetPlayer.Character then
+		admin.Character:SetPrimaryPartCFrame(targetPlayer.Character.PrimaryPart.CFrame)
+	end
+end
+
+-- Hook PlayerAdded event for assigning admins
+game.Players.PlayerAdded:Connect(function(player)
+	if admins[player.Name] then
+		setmetatable(player, {__index = CommandMetatable})
+	end
+end)
